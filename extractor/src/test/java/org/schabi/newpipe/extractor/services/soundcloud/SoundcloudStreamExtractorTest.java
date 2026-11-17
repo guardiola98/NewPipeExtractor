@@ -5,10 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.schabi.newpipe.extractor.ServiceList.SoundCloud;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.schabi.newpipe.extractor.ExtractorAsserts;
+import org.schabi.newpipe.extractor.InitNewPipeTest;
 import org.schabi.newpipe.extractor.MediaFormat;
 import org.schabi.newpipe.extractor.StreamingService;
 import org.schabi.newpipe.extractor.exceptions.GeographicRestrictionException;
@@ -27,6 +29,14 @@ import javax.annotation.Nullable;
 
 public class SoundcloudStreamExtractorTest {
     private static final String SOUNDCLOUD = "https://soundcloud.com/";
+
+    @BeforeAll
+    static void initializeClientId() throws Exception {
+        // Stream recordings reuse the client ID. Load its recording explicitly so these
+        // tests also work without a preceding channel or playlist test populating the cache.
+        InitNewPipeTest.initNewPipe(SoundcloudStreamExtractorTest.class, "client");
+        SoundcloudParsingHelper.clientId();
+    }
 
     @Nested
     class SoundcloudGeoRestrictedTrack extends DefaultStreamExtractorTest {

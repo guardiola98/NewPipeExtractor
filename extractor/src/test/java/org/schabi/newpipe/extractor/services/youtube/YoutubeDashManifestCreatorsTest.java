@@ -110,9 +110,29 @@ class YoutubeDashManifestCreatorsTest extends DefaultSimpleExtractorTest<Youtube
         assertProgressiveStreams(extractor().getVideoOnlyStreams());
         assertProgressiveStreams(extractor().getAudioStreams());
 
-        // we are not able to generate DASH manifests of video formats with audio
-        assertThrows(CreationException.class,
-            () -> assertProgressiveStreams(extractor().getVideoStreams()));
+        // Muxed streams may be absent from the recorded response.
+        for (final Stream stream : assertFilterStreams(extractor().getVideoStreams(),
+                DeliveryMethod.PROGRESSIVE_HTTP)) {
+            assertThrows(CreationException.class,
+                    () -> assertProgressiveStreams(List.of(stream)));
+        }
+    }
+
+    @Test
+    void testProgressiveStreamWithoutIndexRange() throws Exception {
+        // Muxed formats lack the segment index required to build a DASH manifest.
+        // Test this independently of whether the player currently advertises them.
+        final ItagItem itag = ItagItem.getItag(18);
+        itag.setBitrate(600000);
+        itag.setWidth(640);
+        itag.setHeight(360);
+        itag.setCodec("avc1.42001E, mp4a.40.2");
+        itag.setIndexStart(-1);
+        itag.setIndexEnd(-1);
+        final CreationException exception = assertThrows(CreationException.class,
+                () -> YoutubeProgressiveDashManifestCreator.fromProgressiveStreamingUrl(
+                        "https://example.com/muxed-stream", itag, 60));
+        assertTrue(exception.getMessage().contains("indexStart or indexEnd"));
     }
 
     private void assertDashStreams(final List<? extends Stream> streams) throws Exception {

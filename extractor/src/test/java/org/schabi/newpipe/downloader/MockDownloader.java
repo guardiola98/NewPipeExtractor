@@ -11,7 +11,10 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.annotation.Nonnull;
@@ -33,12 +36,21 @@ class MockDownloader extends Downloader {
         try (final var directoryStream = Files.newDirectoryStream(Paths.get(path),
                 entry -> entry.getFileName().toString()
                         .startsWith(RecordingDownloader.FILE_NAME_PREFIX))) {
-            for (final Path entry : directoryStream) {
+            final List<Path> entries = new ArrayList<>();
+            directoryStream.forEach(entries::add);
+            entries.sort(Comparator.comparingInt(entry -> {
+                final String name = entry.getFileName().toString();
+                return Integer.parseInt(name.substring(RecordingDownloader.FILE_NAME_PREFIX.length(),
+                        name.lastIndexOf('.')));
+            }));
+            for (final Path entry : entries) {
                 try (final var reader = Files.newBufferedReader(entry)) {
                     final var response = new GsonBuilder()
                             .create()
                             .fromJson(reader, TestRequestResponse.class);
-                    mocks.put(response.getRequest(), response.getResponse());
+                    // Repeated requests can have different live responses. Keep the first
+                    // recording so pagination does not depend on filesystem iteration order.
+                    mocks.putIfAbsent(response.getRequest(), response.getResponse());
                 }
             }
         } catch (final IOException ioe) {
