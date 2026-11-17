@@ -2,6 +2,7 @@ package org.schabi.newpipe.extractor.services.youtube;
 
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.schabi.newpipe.extractor.ExtractorAsserts.assertNotBlank;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -36,7 +37,10 @@ class YoutubeSignaturesTest implements InitYoutubeTest {
                                     @Nonnull final String sampleString) throws Exception {
         // As the signature deobfuscation changes frequently with player versions, we can only test
         // that we get a different string than the original one
-        assertNotEquals(sampleString,
-                YoutubeJavaScriptPlayerManager.deobfuscateSignature(videoId, sampleString));
+        final String signature =
+                YoutubeJavaScriptPlayerManager.deobfuscateSignature(videoId, sampleString);
+        assertNotBlank(signature);
+        assertNotEquals("undefined", signature);
+        assertNotEquals(sampleString, signature);
     }
 }

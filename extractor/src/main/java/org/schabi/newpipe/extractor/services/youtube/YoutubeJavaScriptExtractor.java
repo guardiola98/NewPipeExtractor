@@ -161,4 +161,50 @@ final class YoutubeJavaScriptExtractor {
             throw new ParsingException("Could not get JavaScript base player's code", e);
         }
     }
+
+    /**
+     * Prepare the player script for execution without a browser DOM.
+     */
+    @Nonnull
+    static String preparePlayerCode(@Nonnull final String javaScriptPlayerCode) {
+        final String strippedJavaScriptPlayerCode = javaScriptPlayerCode
+                .replace("var _yt_player={};(function(g){var window=this;", "")
+                .replace("})(_yt_player);", "");
+        return """
+                var g = {};
+                if (typeof globalThis.XMLHttpRequest === "undefined") {
+                    globalThis.XMLHttpRequest = { prototype: {} };
+                }
+                if (typeof URL === "undefined") {
+                    globalThis.location = {
+                        hash: "",
+                        host: "www.youtube.com",
+                        hostname: "www.youtube.com",
+                        href: "https://www.youtube.com/",
+                        origin: "https://www.youtube.com",
+                        password: "",
+                        pathname: "/",
+                        port: "",
+                        protocol: "https:",
+                        search: "",
+                        username: "",
+                    };
+                } else {
+                    globalThis.location = new URL("https://www.youtube.com");
+                }
+                if (typeof globalThis.document === "undefined") {
+                    globalThis.document = Object.create(null);
+                }
+                if (typeof globalThis.navigator === "undefined") {
+                    globalThis.navigator = Object.create(null);
+                }
+                if (typeof globalThis.self === "undefined") {
+                    globalThis.self = globalThis;
+                }
+                if (typeof globalThis.window === "undefined") {
+                    globalThis.window = globalThis;
+                }
+                """
+                + strippedJavaScriptPlayerCode;
+    }
 }

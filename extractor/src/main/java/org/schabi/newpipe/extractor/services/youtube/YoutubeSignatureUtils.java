@@ -25,9 +25,12 @@ final class YoutubeSignatureUtils {
      */
     static final String DEOBFUSCATION_FUNCTION_NAME = "deobfuscate";
 
+    private static final Pattern PLAYER_URL_FUNCTION_REGEX = Pattern.compile(
+            "(?<![\\w$])([\\w$]+)=function\\([^)]*\\)\\{[^{}]*?"
+                    + "\\.set\\(\"alr\",\"yes\"\\);[\\w$]+&&");
+
     private static final Pattern[] FUNCTION_REGEXES = {
             // CHECKSTYLE:OFF
-            Pattern.compile("(\\w*)=function(.*)\\{.*set\\(\\\"alr\\\",\\\"yes\\\"\\);\\w&&"),
             Pattern.compile("\\b(?:[a-zA-Z0-9_$]+)&&\\((?:[a-zA-Z0-9_$]+)=([a-zA-Z0-9_$]{2,})\\((\\d+,)decodeURIComponent\\((?:[a-zA-Z0-9_$]+)\\)\\)"),
             Pattern.compile("\\b(?:[a-zA-Z0-9_$]+)&&\\((?:[a-zA-Z0-9_$]+)=([a-zA-Z0-9_$]{2,})\\(decodeURIComponent\\((?:[a-zA-Z0-9_$]+)\\)\\)"),
             Pattern.compile("\\bm=([a-zA-Z0-9$]{2,})\\(decodeURIComponent\\(h\\.s\\)\\)"),
@@ -83,6 +86,17 @@ final class YoutubeSignatureUtils {
     static String getDeobfuscationCode(@Nonnull final String javaScriptPlayerCode)
             throws ParsingException {
         try {
+            final Matcher playerUrlFunction =
+                    PLAYER_URL_FUNCTION_REGEX.matcher(javaScriptPlayerCode);
+            if (playerUrlFunction.find()) {
+                // New players transform the signature while constructing the streaming URL.
+                return YoutubeJavaScriptExtractor.preparePlayerCode(javaScriptPlayerCode)
+                        + "\nfunction " + DEOBFUSCATION_FUNCTION_NAME + "(signature){return "
+                        + playerUrlFunction.group(1)
+                        + "(\"https://www.youtube.com/\",\"signature\",signature)"
+                        + ".get(\"signature\");}";
+            }
+
             final Pair<String, String> deobfuscationFunctionNameAndParams =
                     getDeobfuscationFunctionNameAndParams(javaScriptPlayerCode);
             final String deobfuscationFunctionName = deobfuscationFunctionNameAndParams.getFirst();
